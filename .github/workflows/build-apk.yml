@@ -39,6 +39,59 @@ jobs:
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project found at: $PROJECT_DIR"
 
+      - name: Fix Java and Kotlin JVM Target
+        run: |
+          python3 - "$PROJECT_DIR/app/build.gradle.kts" <<'PY'
+          import sys
+
+          path = sys.argv[1]
+
+          with open(path, "r", encoding="utf-8") as f:
+              text = f.read()
+
+          if "compileOptions {" in text:
+              if "sourceCompatibility" not in text:
+                  text = text.replace(
+                      "compileOptions {",
+                      """compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17"""
+                  )
+          else:
+              text = text.replace(
+                  "android {",
+                  """android {
+                  compileOptions {
+                      sourceCompatibility = JavaVersion.VERSION_17
+                      targetCompatibility = JavaVersion.VERSION_17
+                  }"""
+              )
+
+          if "kotlinOptions {" in text:
+              if "jvmTarget" not in text:
+                  text = text.replace(
+                      "kotlinOptions {",
+                      'kotlinOptions {\n        jvmTarget = "17"'
+                  )
+          else:
+              text += """
+
+          kotlinOptions {
+              jvmTarget = "17"
+          }
+          """
+
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(text)
+
+          print("JVM target fixed to Java/Kotlin 17")
+          PY
+
+      - name: Show Gradle Configuration
+        run: |
+          echo "===== app/build.gradle.kts ====="
+          cat "$PROJECT_DIR/app/build.gradle.kts"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
